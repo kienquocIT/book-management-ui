@@ -39,3 +39,34 @@ class UserCreateApiView(APIView):
         r = requests.post(url=f'{settings.API_URL}v3/users/', data=data)
         return JsonResponse(r.json())
 
+class UserUpdateView(View):
+    def get(self, request, pk):
+        return render(request, "detail.html", )
+
+class UserUpdateApiview(APIView):
+    def get(self, request, pk):
+        r = requests.get(url=f'{settings.API_URL}v3/users/{pk}')
+        return JsonResponse(r.json())
+
+    def put(self, request, pk):
+        email = request.POST.get('email')
+        first_name = request.POST.get('first_name')
+        last_name = request.POST.get('last_name')
+
+        data = {
+            'email': email,
+            'first_name': first_name,
+            'last_name': last_name,
+        }
+
+        r = requests.put(url=f'{settings.API_URL}v3/users/{pk}', data=data)
+        return JsonResponse(r.json())
+
+    def delete(self, request, pk):
+        r = requests.delete(url=f'{settings.API_URL}v3/users/{pk}')
+        if r.status_code == 204:
+            return JsonResponse({
+                'status': 'success',
+            })
+        else:
+            return JsonResponse({})

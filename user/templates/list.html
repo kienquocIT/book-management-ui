@@ -1,7 +1,47 @@
 {% extends 'base.html' %}
 
+{% block header_block %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.css"/>
+{% endblock %}
+
 {% block content %}
-    {% for user in users %}
-        <li>{{ user.username }} - {{ user.email }}</li>
-    {% endfor %}
+    <h1 class="mb-5">USER LIST</h1>
+    <table id="users-table" class="table table-striped" data-url="{% url 'user:UserUpdateView' '0' %}">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Username</th>
+            <th>Firstname</th>
+            <th>Lastname</th>
+            <th>Email</th>
+        </tr>
+        </thead>
+    </table>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let table = new DataTable('#users-table', {
+            data: {{ users|safe }},
+            columns: [
+                {
+                    data: null,
+                    render: function (data, type, row, meta) {
+                        return meta.row++;
+                    }
+                },
+                {
+                    data: 'username',
+                    render: (data, type, row, meta) => {
+                        let url_detail = $('#users-table').attr('data-url').replace('0', row?.['id'])
+                        return `<a href="${url_detail}">${data}</a>`
+                    }
+                },
+                {data: 'first_name'},
+                {data: 'last_name'},
+                {data: 'email'}
+            ]
+        });
+    </script>
 {% endblock %}
