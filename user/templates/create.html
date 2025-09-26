@@ -1,0 +1,112 @@
+{% extends 'base.html' %}
+{% load i18n %}
+{% block content %}
+    <form class="w-75" id="create-form" method="post" data-url="{% url 'user:create-api' %}">
+        {% csrf_token %}
+        <h1>Create User</h1>
+        <div class="mb-1">
+            <label for="username_input" class="form-label">Username</label>
+            <input type="text" class="form-control" id="username_input" name="username" value="username">
+        </div>
+        <br>
+        <div class="mb-1">
+            <label for="email_input" class="form-label">Email</label>
+            <input type="email" class="form-control" id="email_input" name="email" value="email@gmail.com">
+        </div>
+        <br>
+        <div class="mb-1">
+            <label for="password_input" class="form-label">Password</label>
+            <input type="password" class="form-control" id="password_input" name="password" value="12345678">
+        </div>
+        <br>
+        <div class="mb-1">
+            <label for="password_input" class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" id="re_password_input" name="re-password" value="12345678">
+        </div>
+        <br>
+        <div class="mb-1">
+            <label for="first_name_input" class="form-label">{% trans 'Firstname' %}</label>
+            <input type="text" class="form-control" id="first_name_input" name="first_name" value="first">
+        </div>
+        <br>
+        <div class="mb-1">
+            <label for="last_name_input" class="form-label">{% trans 'Lastname' %}</label>
+            <input type="text" class="form-control" id="last_name_input" name="last_name" value="last">
+        </div>
+        <br>
+        <button type="submit" id="btn-xxx" class="btn btn-primary" form="create-form">Create User</button>
+    </form>
+{% endblock %}
+{% block js_block %}
+<script>
+    $(document).ready(function () {
+        {#  Create Form  #}
+        $("#create-form").validate({
+            rules: {
+                "username": {
+                    required: true,
+                    minlength: 3
+                },
+                "password": {
+                    required: true,
+                    minlength: 8
+                },
+                "re-password": {
+                    equalTo: "#password_input",
+                    minlength: 8
+                }
+            },
+            messages: {
+                "username": {
+                    required: "Bắt buộc nhập username",
+                    maxlength: "Hãy nhập tối đa 15 ký tự"
+                },
+                "password": {
+                    required: "Bắt buộc nhập password",
+                    minlength: "Hãy nhập ít nhất 8 ký tự"
+                },
+                "re-password": {
+                    equalTo: "Hai password phải giống nhau",
+                    minlength: "Hãy nhập ít nhất 8 ký tự"
+                }
+            },
+            submitHandler: function (form, event) {
+                event.preventDefault();
+                debugger
+                console.log($(form).attr('data-url'))
+                let data = {
+                    username: $("#username_input").val(),
+                    email: $("#email_input").val(),
+                    password: $("#password_input").val(),
+                    first_name: $("#first_name_input").val(),
+                    last_name: $("#last_name_input").val(),
+                }
+
+                $.ajax({
+                    url: "{% url 'user:create-api' %}",
+                    method: 'POST',
+                    data: data,
+                    headers: {"X-CSRFToken": csrftoken},
+                    success: function (response) {
+                        debugger
+                        if (response) {
+                            alert('Create success!')
+                            console.log(response)
+                        } else {
+                            alert('Create user fail!')
+                            console.log(response)
+                        }
+                    },
+                    error: function (err) {
+                        alert(err)
+                    }
+                })
+                debugger
+            }
+        })
+    })
+
+
+</script>
+{% endblock %}
+
