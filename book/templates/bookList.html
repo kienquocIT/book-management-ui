@@ -1,0 +1,68 @@
+{% extends 'base.html' %}
+
+{% block header_block %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.css"/>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1>BOOK LIST</h1>
+        <button id="btn-create" class="btn btn-dark rounded">Create new</button>
+    </div>
+    <table id="books-table" class="table table-striped" data-url="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Title</th>
+            <th>Author</th>
+            <th>Available</th>
+            <th>Total</th>
+        </tr>
+        </thead>
+    </table>
+    <script id="url-tag" data-url="{% url 'book:BookCreateView' %}"></script>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let table = new DataTable('#books-table', {
+            data: {{ books|safe }},
+            columns: [
+                {
+                    data: null,
+                    render: function (data, type, row, meta) {
+                        return meta.row++;
+                    }
+                },
+                {
+                    data: 'title',
+                    render: function (data, type, row, meta) {
+                        let url_detail = $('#books-table').attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', row?.['id'])
+                        return `<a href="${url_detail}">${data}</a>`
+                    }
+                },
+                {
+                    data: 'authors',
+                    render: function (data, type, row, meta) {
+                        if (data.length > 0) {
+                            let authors = ""
+                            data.forEach(function (author, index) {
+                                authors += `${author['first_name']} ${author['last_name']} <br>`
+                            })
+                            return authors
+                        }
+                        else
+                            return '<div class="text-secondary">Updating ...</div>'
+                    }
+                },
+                {data: 'available_copies'},
+                {data: 'total_copies'}
+            ]
+        });
+
+        $("#btn-create").on('click', function () {
+            window.location.replace($("#url-tag").attr('data-url'))
+        })
+    </script>
+{% endblock %}

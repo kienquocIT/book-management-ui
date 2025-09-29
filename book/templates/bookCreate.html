@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-75 position-relative" id="create-form" data-method="POST"
+          data-url="{% url 'book:BookCreateApiView' %}"
+          data-url-redirect="{% url 'book:BookListView' %}"
+    >
+        {% csrf_token %}
+        <h1 class="mb-4">Create Book</h1>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="titleInput" placeholder="Title...">
+            <label for="titleInput">Title</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="publisherInput" placeholder="Publisher...">
+            <label for="publisherInput">Publisher</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="date" class="form-control" id="publishDateInput">
+            <label for="publishDateInput">Publish Date</label>
+        </div>
+        <div class="mb-3">
+            <div class="overflow-auto" style="max-height: 200px;">
+                <label class="mb-2">Open to select authors</label>
+                {% for author in authors %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="{{ author.id }}"
+                               id="authorCheckInput{{ author.id }}">
+                        <label class="form-check-label" for="authorCheckInput{{ author.id }}">
+                            {{ author.first_name }} {{ author.last_name }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+            <button type="button" class="btn btn-dark mt-2" id="add-author-btn">Add</button>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="number" class="form-control" id="totalCopies">
+            <label for="totalCopies">Total copies</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="number" class="form-control" id="availableCopies" value="0">
+            <label for="availableCopies">Available copies</label>
+        </div>
+        <div class="position-absolute end-0">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+
+    </form>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let create_form = $("#create-form")
+
+        $("#back-list-btn").on("click", function () {
+            window.location.replace(create_form.attr("data-url-redirect"))
+        })
+
+        $(document).ready(function () {
+            create_form.validate({
+                submitHandler: function (form) {
+                    let selectedAuthors = []
+
+                    $("input[type=checkbox]:checked").each(function () {
+                        selectedAuthors.push($(this).val())
+                    })
+
+                    let data = {
+                        title: $("#titleInput").val(),
+                        publisher: $("#publisherInput").val(),
+                        published_date: $("#publishDateInput").val(),
+                        authors: selectedAuthors,
+                        total_copies: $("#totalCopies").val(),
+                        available_copies: $("#availableCopies").val()
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: $(form).attr('data-url'),
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Create success!');
+                            window.location.replace($(form).attr('data-url-redirect'))
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+        })
+    </script>
+{% endblock %}

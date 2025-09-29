@@ -11,12 +11,12 @@ class UserListView(View):
     def get(self, request):
         r = requests.get(url=f'{settings.API_URL}v3/users', params=request.GET)
         print(r.json())
-        return render(request, "list.html", {'users': r.json()})
+        return render(request, "userList.html", {'users': r.json()})
 
 
 class UserCreateView(View):
     def get(self, request):
-        return render(request, "create.html")
+        return render(request, "userCreate.html")
     def post(self, request):
         print("post")
 
@@ -41,7 +41,7 @@ class UserCreateApiView(APIView):
 
 class UserUpdateView(View):
     def get(self, request, pk):
-        return render(request, "detail.html", )
+        return render(request, "userDetail.html", )
 
 class UserUpdateApiview(APIView):
     def get(self, request, pk):

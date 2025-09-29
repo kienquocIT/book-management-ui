@@ -35,9 +35,8 @@ $(document).ready(function () {
                 headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
                 success: function (response) {
                     alert('Create success!');
-                    window.location.replace($(form).attr('data-url-redirect'))
                 },
-                error: function (xhr) {
+                error: function (xhr, status, error) {
                     alert('Create user fail!');
                     console.log(xhr.responseText);
                 }

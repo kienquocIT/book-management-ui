@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-75 position-relative" id="update-form" data-method="PUT"
+          data-url="{% url 'book:BookUpdateApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"
+          data-url-redirect="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+        {% csrf_token %}
+        <h1 class="mb-4">Book Detail</h1>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="titleInput" placeholder="Title..." name="title">
+            <label for="titleInput">Title</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="publisherInput" placeholder="Publisher..." name="publisher">
+            <label for="publisherInput">Publisher</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="date" class="form-control" id="publishDateInput" name="published_date">
+            <label for="publishDateInput">Publish Date</label>
+        </div>
+        <div class="mb-3">
+            <div class="overflow-auto" style="max-height: 200px;">
+                <label class="mb-2">Open to select authors</label>
+                <div id="check-authors">
+                    {% for author in authors %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" value="{{ author.id }}"
+                                   id="authorCheckInput{{ author.id }}">
+                            <label class="form-check-label" for="authorCheckInput{{ author.id }}">
+                                {{ author.first_name }} {{ author.last_name }}
+                            </label>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+            <button type="button" class="btn btn-dark mt-2" id="add-author-btn">Add</button>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="number" class="form-control" id="totalCopies" name="total_copies">
+            <label for="totalCopies">Total copies</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="number" class="form-control" id="availableCopies" value="0" name="available_copies">
+            <label for="availableCopies">Available copies</label>
+        </div>
+        <div class="position-absolute end-0">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal">Delete
+            </button>
+        </div>
+    </form>
+
+    <div class="modal fade" id="delete-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Do you delete this book?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btn-delete" class="btn btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        $(document).ready(function () {
+            let pk = getPkFromUrl()
+
+            let update_form = $("#update-form")
+
+            let url_detail = update_form.attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
+            let url_redirect = update_form.attr('data-url-redirect').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
+            let url_redirect_list = update_form.attr('data-url-redirect').replace('/0aab5494-7fb3-4e68-81ab-f52ed706335e', '')
+            console.log(url_detail)
+
+            $.ajax({
+                url: url_detail,
+                method: 'GET',
+                success: function (response) {
+                    $("input[name='title']").val(response?.['title'])
+                    $("input[name='publisher']").val(response?.['publisher'])
+                    $("input[name='published_date']").val(response?.['published_date'])
+                    $("input[name='total_copies']").val(response?.['total_copies'])
+                    $("input[name='available_copies']").val(response?.['available_copies'])
+                    let authors = response?.['authors']
+                    let authorsId = []
+
+                    authors.forEach(function (author, index) {
+                        authorsId.push(author?.['id'])
+                    })
+
+                    $("#check-authors input[type='checkbox']").each(function () {
+                        let id = $(this).val()
+                        if (authorsId.includes(id)) {
+                            $(this).prop('checked', true)
+                        } else {
+                            $(this).prop('checked', false)
+                        }
+                    })
+                },
+                error: function (xhr) {
+                    alert('Get user fail!');
+                    console.log(xhr.responseText);
+                }
+            })
+
+            update_form.validate({
+                submitHandler: function (form) {
+                    let selectedAuthors = []
+
+                    $("input[type=checkbox]:checked").each(function () {
+                        selectedAuthors.push($(this).val())
+                    })
+
+                    let data = {
+                        title: $("#titleInput").val(),
+                        publisher: $("#publisherInput").val(),
+                        published_date: $("#publishDateInput").val(),
+                        authors: selectedAuthors,
+                        total_copies: $("#totalCopies").val(),
+                        available_copies: $("#availableCopies").val()
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: url_detail,
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Update success!');
+                            window.location.replace(url_redirect)
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+
+            $("#btn-delete").on('click', function () {
+                $.ajax({
+                    url: url_detail,
+                    method: 'DELETE',
+                    success: function (response) {
+                        alert('Delete book success')
+                        window.location.replace(url_redirect_list)
+                    },
+                    error: function (xhr) {
+                        alert('Delete boook fail!');
+                        console.log(xhr.responseText);
+                    }
+                });
+            })
+
+            $("#back-list-btn").on("click", function () {
+                window.location.replace(url_redirect_list)
+            })
+
+            function getPkFromUrl() {
+                let current_url = window.location.href
+                let url_split = current_url.split('/')
+                return url_split.at(url_split.length - 1)
+            }
+        })
+    </script>
+{% endblock %}

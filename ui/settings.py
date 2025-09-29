@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'jquery',
     'bootstrap5',
-    'user'
+    'user',
+    'book'
 ]
 
 MIDDLEWARE = [
