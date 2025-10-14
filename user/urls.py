@@ -1,5 +1,6 @@
 from django.urls import path
-from .views import UserListView, UserCreateView, UserCreateApiView, UserUpdateView, UserUpdateApiview
+from .views import UserListView, UserCreateView, UserCreateApiView, UserUpdateView, UserUpdateApiview, \
+    UserUploadAvatarView
 
 app_name = 'user'
 
@@ -11,4 +12,5 @@ urlpatterns = [
 
     path('api/<int:pk>', UserUpdateApiview.as_view(), name='UserUpdateApiView'),
 
+    path('<int:pk>/avatar', UserUploadAvatarView.as_view(), name='UserUploadAvatarView'),
 ]

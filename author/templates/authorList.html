@@ -1,0 +1,189 @@
+{% extends 'base.html' %}
+
+{% block header_block %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.css"/>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1>AUTHOR LIST</h1>
+        <button id="btn-create" class="btn btn-dark rounded">Create new</button>
+    </div>
+    <div class="d-flex justify-content-between gap-2 mb-5">
+        <select id="author_select" data-url="{% url 'author:AuthorListAPI' %}" class="form-select select2" multiple
+                aria-label="Default select example">
+        </select>
+    </div>
+    <div id="wrapper-book-table" hidden="hidden" class="mb-5">
+        <h4>Filter books</h4>
+        <table id="books-table" class="table table-striped">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+            </tr>
+            </thead>
+        </table>
+    </div>
+    <div id="wrapper-table">
+        <h4>Author List</h4>
+        <table id="authors-table" class="table table-striped"
+               data-url="{% url 'author:AuthorUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+            <thead>
+            <tr>
+                <th>ID</th>
+                <th>Firstname</th>
+                <th>Lastname</th>
+                <th>Books</th>
+            </tr>
+            </thead>
+        </table>
+    </div>
+    <script id="url-tag" data-url="{% url 'author:AuthorCreateView' %}"
+            data-detail-url="{% url 'author:AuthorUpdateApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"
+            data-book-detail-url="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"></script>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let apiUrl = "{% url 'author:AuthorListAPI' %}"
+        let table = new DataTable('#authors-table', {
+            serverSide: true,
+            processing: true,
+            pageLength: 4,
+            lengthMenu: [[4, 6, 8], [4, 6, 8]],
+            ordering: false,
+            ajax: function (data, callback, settings) {
+                let page = Math.floor(data.start / data.length) + 1;
+                let search = data.search.value;
+
+                $.get(apiUrl, {page: page, page_size: data.length, search: search})
+                    .done(function (res) {
+                        callback({
+                            recordsTotal: res.count,
+                            recordsFiltered: res.count,
+                            data: res.results
+                        });
+                    })
+                    .fail(function (err) {
+                        console.error(err);
+                        window.location.reload()
+                    });
+            },
+            columns: [
+                {
+                    data: null,
+                    render: function (data, type, row, meta) {
+                        return meta.row++;
+                    }
+                },
+                {
+                    data: 'first_name',
+                    render: function (data, type, row, meta) {
+                        let url_detail = $('#authors-table').attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', row?.['id'])
+                        return `<a href="${url_detail}">${data}</a>`
+                    }
+                },
+                {
+                    data: 'last_name'
+                },
+                {
+                    data: 'books',
+                    render: function (data, type, row, meta) {
+                        if (data.length > 0) {
+                            let books = ""
+                            data.forEach(function (book, index) {
+                                books += `${book['title']}<br>`
+                            })
+                            return books
+                        } else
+                            return '<div class="text-secondary">Updating ...</div>'
+                    }
+                }
+            ]
+        });
+
+        $("#btn-create").on('click', function () {
+            window.location.replace($("#url-tag").attr('data-url'))
+        })
+
+        $(document).ready(function () {
+            let author_select = $("#author_select")
+
+            author_select.select2({
+                placeholder: "Choose an author to view books",
+                minimumInputLength: 0,
+                allowClear: true,
+                dropdownAutoWidth: true,
+                ajax: {
+                    url: $('#author_select').data('url'),
+                    dataType: 'json',
+                    method: 'GET',
+                    data: function (params) {
+                        return {
+                            search: params.term || "",
+                            page: params.page || 1,
+                            page_size: 8
+                        };
+                    },
+                    processResults: function (data, params) {
+                        console.log(data.results)
+                        params.page = params.page || 1;
+                        return {
+                            results: data.results.map(function (author) {
+                                return {
+                                    id: author.id,
+                                    text: `${author.first_name} ${author.last_name}`,
+                                    books: author.books
+                                };
+                            }),
+                            pagination: {
+                                more: (params.page * 8) < data.count
+                            }
+                        };
+                    },
+                    cache: true
+                },
+            });
+
+            author_select.on('change', function () {
+                const selectedIds = $(this).val()
+                if (selectedIds && selectedIds.length > 0) {
+                    $("#wrapper-book-table").removeAttr('hidden');
+
+                    $.ajax({
+                        url: "{% url 'book:BookListApiView' %}",
+                        data: {author_ids: selectedIds.join(',')},
+                        success: function (res) {
+                            const books = res.results || [];
+                            console.log(books)
+
+                            if ($.fn.DataTable.isDataTable("#books-table")) {
+                                $("#books-table").DataTable().destroy();
+                            }
+
+                            new DataTable("#books-table", {
+                                data: books,
+                                searching: false,
+                                paging: false,
+                                info: false,
+                                columns: [
+                                    {data: "id"},
+                                    {data: "title"}
+                                ]
+                            });
+                        },
+                        error: function (err) {
+                            console.error("Lỗi khi load books:", err);
+                        }
+                    });
+                }
+            })
+
+            author_select.on('select2:clear', function (e) {
+                $("#wrapper-book-table").attr('hidden', 'hidden')
+            })
+        })
+    </script>
+{% endblock %}

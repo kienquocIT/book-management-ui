@@ -15,10 +15,27 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
+from django.views.static import serve
+
+from ui import settings
+
+
+def cached_serve(request, path, document_root=None):
+    response = serve(request, path, document_root)
+    # Thêm caching headers
+    response["Cache-Control"] = "max-age=31536000, public, immutable"
+    return response
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('user/', include('user.urls')),
-    path('book/', include('book.urls'))
+    path('book/', include('book.urls')),
+    path('author/', include('author.urls')),
+    path('', include('authentication.urls')),
 ]
+
+if settings.DEBUG:
+    urlpatterns += [
+        re_path(r'^media/(?P<path>.*)$', cached_serve, {'document_root': settings.MEDIA_ROOT}),
+    ]

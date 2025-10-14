@@ -1,0 +1,85 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-100 position-relative" id="create-form" data-method="POST"
+          data-url="{% url 'author:AuthorCreateApiView' %}"
+          data-url-redirect="{% url 'author:AuthorListView' %}"
+    >
+        {% csrf_token %}
+        <h1 class="mb-4">Create Author</h1>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="first_name_input" name="first_name">
+            <label for="first_name_input">Firstname</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="last_name_input" name="last_name">
+            <label for="last_name_input">Lastname</label>
+        </div>
+        <div class="mb-3">
+            <label class="mb-2 fw-bold">Open to select authors</label>
+            <div class="overflow-auto" style="max-height: 200px;">
+                {% for book in books %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="{{ book.id }}"
+                               id="book_check_input{{ book.id }}">
+                        <label class="form-check-label" for="book_check_input{{ book.id }}">
+                            {{ book.title }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="position-absolute end-0">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let create_form = $("#create-form")
+
+        $("#back-list-btn").on("click", function () {
+            window.location.replace(create_form.attr("data-url-redirect"))
+        })
+
+        $(document).ready(function () {
+            create_form.validate({
+                submitHandler: function (form) {
+                    let selectedBooks = []
+
+                    $("input[type=checkbox]:checked").each(function () {
+                        selectedBooks.push($(this).val())
+                    })
+
+                    let data = {
+                        first_name: $("input[name='first_name']").val(),
+                        last_name: $("input[name='last_name']").val(),
+                        books: selectedBooks
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: $(form).attr('data-url'),
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Create success!');
+                            window.location.replace($(form).attr('data-url-redirect'))
+                        },
+                        error: function (error) {
+                            alert('Create fail')
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+        })
+    </script>
+{% endblock %}

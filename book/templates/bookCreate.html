@@ -2,7 +2,7 @@
 {% load static %}
 {% load i18n %}
 {% block content %}
-    <form class="w-75 position-relative" id="create-form" data-method="POST"
+    <form class="w-100 position-relative" id="create-form" data-method="POST"
           data-url="{% url 'book:BookCreateApiView' %}"
           data-url-redirect="{% url 'book:BookListView' %}"
     >
@@ -22,7 +22,7 @@
         </div>
         <div class="mb-3">
             <div class="overflow-auto" style="max-height: 200px;">
-                <label class="mb-2">Open to select authors</label>
+                <label class="mb-2 fw-bold">Open to select authors</label>
                 {% for author in authors %}
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" value="{{ author.id }}"
@@ -33,7 +33,6 @@
                     </div>
                 {% endfor %}
             </div>
-            <button type="button" class="btn btn-dark mt-2" id="add-author-btn">Add</button>
         </div>
         <div class="form-floating mb-3">
             <input type="number" class="form-control" id="totalCopies">
@@ -43,12 +42,47 @@
             <input type="number" class="form-control" id="availableCopies" value="0">
             <label for="availableCopies">Available copies</label>
         </div>
+
+        {# Form menu create #}
+        <div class="fw-bold mb-1">Menu</div>
+        <div class="mb-1 w-100" id="menu_list">
+        </div>
+        <button type="button" class="btn btn-warning mb-3" data-bs-toggle="modal" data-bs-target="#menu-create-modal">
+            Create menu
+        </button>
+
         <div class="position-absolute end-0">
             <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
             <button type="submit" class="btn btn-primary">Create</button>
         </div>
 
     </form>
+
+    <div class="modal fade" id="menu-create-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel"> Create a new menu for book</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="menu_title_input" placeholder="Menu title..."
+                               name="created_menu_title">
+                        <label for="menu_title_input">Menu Title</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="number" class="form-control" id="pages_input" name="created_menu_pages">
+                        <label for="pages_input">Pages</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btn-create-menu" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block js_block %}
@@ -60,6 +94,8 @@
         })
 
         $(document).ready(function () {
+            let created_menus = []
+
             create_form.validate({
                 submitHandler: function (form) {
                     let selectedAuthors = []
@@ -74,7 +110,8 @@
                         published_date: $("#publishDateInput").val(),
                         authors: selectedAuthors,
                         total_copies: $("#totalCopies").val(),
-                        available_copies: $("#availableCopies").val()
+                        available_copies: $("#availableCopies").val(),
+                        menu_list: created_menus
                     }
 
                     console.log(data)
@@ -96,6 +133,42 @@
                     })
                 }
             })
+
+            $("#btn-create-menu").on('click', function () {
+                let created_menu = {
+                    title: $("input[name='created_menu_title']").val(),
+                    pages: $("input[name='created_menu_pages']").val()
+                }
+                created_menus.push(created_menu)
+                loadMenuList()
+                $("#menu-create-modal").modal('hide')
+            })
+
+            function loadMenuList() {
+                let container = $("#menu_list");
+                container.empty();
+
+                if (created_menus.length === 0) {
+                    container.text("No menu for book")
+                } else {
+                    created_menus.forEach(function (item, index) {
+                        let html = `
+                            <div class="d-flex gap-1 mb-1">
+                                <div class="form-floating flex-grow-1">
+                                    <input type="text" class="form-control" id="menu_title_input" placeholder="Title" value="${item?.['title']}">
+                                    <label for="menu_title_input">Menu Title</label>
+                                </div>
+                                <div class="form-floating">
+                                    <input type="number" class="form-control" id="pages_input" name="pages" value="${item?.['pages']}">
+                                    <label for="pages_input">Pages</label>
+                                </div>
+                            </div>
+                        `
+                        container.append(html)
+                    })
+                }
+
+            }
         })
     </script>
 {% endblock %}

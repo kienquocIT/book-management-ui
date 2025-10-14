@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+    <form id="register_form"
+          data-url="{% url 'authentication:AuthenticationRegisterApi' %}"
+          data-success-url="{% url 'authentication:AuthenticationLogin' %}"
+          data-method="POST"
+          class="w-100 position-relative">
+        <h1 class="mb-4">REGISTER</h1>
+        {% csrf_token %}
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="username_input">
+            <label for="username_input">Username</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="email" class="form-control" id="email_input">
+            <label for="email_input">Email</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="password_input">
+            <label for="password_input">Password</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="first_name_input">
+            <label for="first_name_input">Firstname</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="last_name_input">
+            <label for="last_name_input">Lastname</label>
+        </div>
+        <button type="submit" class="btn btn-primary position-absolute end-0">Submit</button>
+    </form>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let register_form = $('#register_form')
+
+        $(document).ready(function () {
+
+            register_form.validate({
+                submitHandler: function (form) {
+                    let data = {
+                        username: $('#username_input').val(),
+                        password: $('#password_input').val(),
+                        email: $('#email_input').val(),
+                        first_name: $('#first_name_input').val(),
+                        last_name: $('#last_name_input').val()
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: $(form).attr('data-url'),
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Register success!');
+                            window.location.replace($(form).attr('data-success-url'))
+                        },
+                        error: function (error) {
+                            alert('Register fail!')
+                            window.location.reload()
+                        }
+                    })
+                }
+            })
+        })
+    </script>
+{% endblock %}

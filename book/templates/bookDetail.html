@@ -2,11 +2,19 @@
 {% load static %}
 {% load i18n %}
 {% block content %}
-    <form class="w-75 position-relative" id="update-form" data-method="PUT"
+    <form class="w-100 position-relative" id="update-form" data-method="PUT"
           data-url="{% url 'book:BookUpdateApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"
           data-url-redirect="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
         {% csrf_token %}
         <h1 class="mb-4">Book Detail</h1>
+
+        <a id="view-demo" class="">View Demo</a>
+        <div class="input-group mt-2 mb-3"
+             data-url="{% url 'book:BookUploadApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}" id="upload-form">
+            <input type="file" class="form-control" id="inputUpload" aria-describedby="uploadBtn"
+                   aria-label="Upload">
+            <button class="btn btn-secondary" type="button" id="uploadBtn">Upload</button>
+        </div>
         <div class="form-floating mb-3">
             <input type="text" class="form-control" id="titleInput" placeholder="Title..." name="title">
             <label for="titleInput">Title</label>
@@ -19,9 +27,10 @@
             <input type="date" class="form-control" id="publishDateInput" name="published_date">
             <label for="publishDateInput">Publish Date</label>
         </div>
+
         <div class="mb-3">
             <div class="overflow-auto" style="max-height: 200px;">
-                <label class="mb-2">Open to select authors</label>
+                <label class="mb-2 fw-bold">Open to select authors</label>
                 <div id="check-authors">
                     {% for author in authors %}
                         <div class="form-check">
@@ -34,7 +43,6 @@
                     {% endfor %}
                 </div>
             </div>
-            <button type="button" class="btn btn-dark mt-2" id="add-author-btn">Add</button>
         </div>
         <div class="form-floating mb-3">
             <input type="number" class="form-control" id="totalCopies" name="total_copies">
@@ -44,6 +52,15 @@
             <input type="number" class="form-control" id="availableCopies" value="0" name="available_copies">
             <label for="availableCopies">Available copies</label>
         </div>
+
+        {# Form menu create #}
+        <div class="fw-bold mb-1">Menu</div>
+        <div class="mb-1 w-100" id="menu_list">
+        </div>
+        <button type="button" class="btn btn-warning mb-3" data-bs-toggle="modal" data-bs-target="#menu-create-modal">
+            Create menu
+        </button>
+
         <div class="position-absolute end-0">
             <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
             <button type="submit" class="btn btn-primary">Update</button>
@@ -52,6 +69,7 @@
         </div>
     </form>
 
+    {# Modal delete #}
     <div class="modal fade" id="delete-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -69,6 +87,33 @@
             </div>
         </div>
     </div>
+
+    {# Modal menu create #}
+    <div class="modal fade" id="menu-create-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel"> Create a new menu for book</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="menu_title_input" placeholder="Menu title..."
+                               name="created_menu_title">
+                        <label for="menu_title_input">Menu Title</label>
+                    </div>
+                    <div class="form-floating mb-3">
+                        <input type="number" class="form-control" id="pages_input" name="created_menu_pages">
+                        <label for="pages_input">Pages</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btn-create-menu" class="btn btn-primary">Create</button>
+                </div>
+            </div>
+        </div>
+    </div>
 {% endblock %}
 
 {% block js_block %}
@@ -81,7 +126,9 @@
             let url_detail = update_form.attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
             let url_redirect = update_form.attr('data-url-redirect').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
             let url_redirect_list = update_form.attr('data-url-redirect').replace('/0aab5494-7fb3-4e68-81ab-f52ed706335e', '')
-            console.log(url_detail)
+            let url_upload = $("#upload-form").attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
+
+            let created_menus = []
 
             $.ajax({
                 url: url_detail,
@@ -92,8 +139,12 @@
                     $("input[name='published_date']").val(response?.['published_date'])
                     $("input[name='total_copies']").val(response?.['total_copies'])
                     $("input[name='available_copies']").val(response?.['available_copies'])
+                    $("#view-demo").attr('href', `${response?.['demo_file'] || ""}`)
                     let authors = response?.['authors']
                     let authorsId = []
+
+                    let temp_menus = response?.['menus'] || []
+                    loadMenuList(temp_menus)
 
                     authors.forEach(function (author, index) {
                         authorsId.push(author?.['id'])
@@ -106,6 +157,16 @@
                         } else {
                             $(this).prop('checked', false)
                         }
+                    })
+
+                    $("#btn-create-menu").on('click', function () {
+                        let created_menu = {
+                            title: $("input[name='created_menu_title']").val(),
+                            pages: $("input[name='created_menu_pages']").val()
+                        }
+                        temp_menus.push(created_menu)
+                        loadMenuList(temp_menus)
+                        $("#menu-create-modal").modal('hide')
                     })
                 },
                 error: function (xhr) {
@@ -128,7 +189,8 @@
                         published_date: $("#publishDateInput").val(),
                         authors: selectedAuthors,
                         total_copies: $("#totalCopies").val(),
-                        available_copies: $("#availableCopies").val()
+                        available_copies: $("#availableCopies").val(),
+                        menus: created_menus
                     }
 
                     console.log(data)
@@ -160,7 +222,7 @@
                         window.location.replace(url_redirect_list)
                     },
                     error: function (xhr) {
-                        alert('Delete boook fail!');
+                        alert('Delete book fail!');
                         console.log(xhr.responseText);
                     }
                 });
@@ -170,10 +232,71 @@
                 window.location.replace(url_redirect_list)
             })
 
+            $("#uploadBtn").on('click', function () {
+                let file = $("#inputUpload")[0]
+                let files = file.files
+
+                if (files.length > 0) {
+                    let formData = new FormData()
+                    for (let i = 0; i < files.length; i++)
+                        formData.append('demo_file', files[i])
+
+                    $.ajax({
+                        url: url_upload,
+                        type: 'PUT',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        success: function (response) {
+                            alert('Upload successful: ' + response)
+                            window.location.replace(url_redirect)
+                        },
+                        error: function (jqXHR, textStatus, errorThrown) {
+                            console.log('Upload failed: ' + textStatus + ' - ' + errorThrown)
+                        }
+                    });
+                } else {
+                    alert('Please select a file to upload')
+                }
+            })
+
             function getPkFromUrl() {
                 let current_url = window.location.href
                 let url_split = current_url.split('/')
                 return url_split.at(url_split.length - 1)
+            }
+
+            function loadMenuList(temp_menus) {
+                let container = $("#menu_list");
+                created_menus = []
+                container.empty();
+
+                if (temp_menus.length === 0) {
+                    container.text("No menu for book")
+                } else {
+                    temp_menus.forEach(function (item, index) {
+                        let html = `
+                            <div class="d-flex gap-1 mb-1">
+                                <div class="form-floating flex-grow-1">
+                                    <input type="text" class="form-control" id="menu_title_input" placeholder="Title" value="${item?.['title']}">
+                                    <label for="menu_title_input">Menu Title</label>
+                                </div>
+                                <div class="form-floating">
+                                    <input type="number" class="form-control" id="pages_input" name="pages" value="${item?.['pages']}">
+                                    <label for="pages_input">Pages</label>
+                                </div>
+                            </div>
+                        `
+                        container.append(html)
+
+                        let created_menu = {
+                            title: item?.['title'],
+                            pages: item?.['pages']
+                        }
+                        created_menus.push(created_menu)
+                    })
+                }
+
             }
         })
     </script>

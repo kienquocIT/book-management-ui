@@ -10,7 +10,8 @@
         <h1>BOOK LIST</h1>
         <button id="btn-create" class="btn btn-dark rounded">Create new</button>
     </div>
-    <table id="books-table" class="table table-striped" data-url="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+    <table id="books-table" class="table table-striped"
+           data-url="{% url 'book:BookUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
         <thead>
         <tr>
             <th>ID</th>
@@ -21,13 +22,39 @@
         </tr>
         </thead>
     </table>
+
     <script id="url-tag" data-url="{% url 'book:BookCreateView' %}"></script>
 {% endblock %}
 
 {% block js_block %}
     <script>
+        let apiUrl = "{% url 'book:BookListApiView' %}"
+        console.log(apiUrl)
         let table = new DataTable('#books-table', {
-            data: {{ books|safe }},
+            serverSide: true,
+            processing: true,
+            pageLength: 4,
+            lengthMenu: [ [4, 6, 8], [4, 6, 8] ],
+            ordering: false,
+            {#data: {{ books|safe }},#}
+            ajax: function (data, callback, settings) {
+                let page = Math.floor(data.start / data.length) + 1;
+                let search = data.search.value;
+
+                $.get(apiUrl, {page: page, page_size: data.length, search: search})
+                    .done(function (res) {
+                        console.log(res.results)
+                        callback({
+                            recordsTotal: res.count,
+                            recordsFiltered: res.count,
+                            data: res.results
+                        });
+                    })
+                    .fail(function (err) {
+                        console.error(err);
+                        window.location.reload()
+                    });
+            },
             columns: [
                 {
                     data: null,
@@ -51,8 +78,7 @@
                                 authors += `${author['first_name']} ${author['last_name']} <br>`
                             })
                             return authors
-                        }
-                        else
+                        } else
                             return '<div class="text-secondary">Updating ...</div>'
                     }
                 },

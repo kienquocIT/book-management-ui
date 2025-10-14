@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block content %}
+    <form id="login_form"
+          data-url="{% url 'authentication:AuthenticationApiLogin' %}"
+          data-success-url="{% url 'user:UserListView' %}"
+          data-method="POST"
+          class="w-100 position-relative">
+        <h1 class="mb-4">LOGIN</h1>
+        {% csrf_token %}
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="username_input">
+            <label for="username_input">Username</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="password" class="form-control" id="password_input">
+            <label for="password_input">Password</label>
+        </div>
+        <button type="submit" class="btn btn-primary position-absolute end-0">Submit</button>
+    </form>
+    <div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1100">
+        <div id="toast" class="toast align-items-center text-light fw-bold border-0" role="alert"
+             aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div id="toast-body" class="toast-body">
+
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto"
+                        data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let login_form = $('#login_form')
+
+        $(document).ready(function () {
+
+            login_form.validate({
+                submitHandler: function (form) {
+                    let data = {
+                        username: $('#username_input').val(),
+                        password: $('#password_input').val()
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: $(form).attr('data-url'),
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            displayToast('Login success!!!', true);
+                            window.location.replace($(form).attr('data-success-url'))
+                        },
+                        error: function (error) {
+                            displayToast('Login fail!!!', false)
+                        }
+                    })
+                }
+            })
+        })
+
+        function displayToast(message, is_success) {
+            let toast = $("#toast")
+
+            toast.attr('class', 'toast align-items-center text-light fw-bold border-0')
+
+            if (is_success) {
+                toast.addClass('bg-success')
+            } else {
+                toast.addClass('bg-danger')
+            }
+
+            $("#toast-body").text(message)
+
+            let bsToast = new bootstrap.Toast(toast[0], {delay: 3000})
+            bsToast.show()
+        }
+    </script>
+{% endblock %}

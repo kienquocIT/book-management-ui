@@ -6,7 +6,10 @@
 {% endblock %}
 
 {% block content %}
-    <h1 class="mb-5">USER LIST</h1>
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1>USER LIST</h1>
+        <button id="btn-create" class="btn btn-dark rounded">Create new</button>
+    </div>
     <table id="users-table" class="table table-striped" data-url="{% url 'user:UserUpdateView' '0' %}">
         <thead>
         <tr>
@@ -18,6 +21,7 @@
         </tr>
         </thead>
     </table>
+    <script id="url-tag" data-url="{% url 'user:UserCreateView' %}"></script>
 {% endblock %}
 
 {% block js_block %}
@@ -43,5 +47,9 @@
                 {data: 'email'}
             ]
         });
+
+        $("#btn-create").on('click', function () {
+            window.location.replace($("#url-tag").attr('data-url'))
+        })
     </script>
 {% endblock %}

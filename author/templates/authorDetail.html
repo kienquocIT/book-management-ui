@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-75 position-relative" id="update-form" data-method="PUT"
+          data-url="{% url 'author:AuthorUpdateApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"
+          data-url-redirect="{% url 'author:AuthorUpdateView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+        {% csrf_token %}
+        <h1 class="mb-4">Author Detail</h1>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="first_name_input" name="first_name">
+            <label for="first_name_input">Firstname</label>
+        </div>
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="last_name_input" name="last_name">
+            <label for="last_name_input">Lastname</label>
+        </div>
+        <div class="mb-3">
+            <label class="mb-2 fw-bold">Open to select authors</label>
+            <div class="overflow-auto" style="max-height: 200px;">
+                {% for book in books %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="{{ book.id }}"
+                               id="book_check_input{{ book.id }}">
+                        <label class="form-check-label" for="book_check_input{{ book.id }}">
+                            {{ book.title }}
+                        </label>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="position-absolute end-0">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal">Delete
+            </button>
+        </div>
+    </form>
+
+    {# Modal delete #}
+    <div class="modal fade" id="delete-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Do you delete this book?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="btn-delete" class="btn btn-danger">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        let pk = getPkFromUrl()
+
+        let update_form = $("#update-form")
+
+        let url_detail = update_form.attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
+        let url_redirect = update_form.attr('data-url-redirect').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
+        let url_redirect_list = update_form.attr('data-url-redirect').replace('/0aab5494-7fb3-4e68-81ab-f52ed706335e', '')
+
+        $("#back-list-btn").on("click", function () {
+            window.location.replace(url_redirect_list)
+        })
+
+        $("#btn-delete").on('click', function () {
+            $.ajax({
+                url: url_detail,
+                method: 'DELETE',
+                success: function (response) {
+                    alert('Delete author success')
+                    window.location.replace(url_redirect_list)
+                },
+                error: function (xhr) {
+                    alert('Delete author fail!');
+                    console.log(xhr.responseText);
+                }
+            });
+        })
+
+        $(document).ready(function () {
+            $.ajax({
+                url: url_detail,
+                method: 'GET',
+                success: function (response) {
+                    $("input[name='first_name']").val(response?.['first_name'])
+                    $("input[name='last_name']").val(response?.['last_name'])
+                    let books = response?.['books']
+                    let booksId = []
+
+                    books.forEach(function (author, index) {
+                        booksId.push(author?.['id'])
+                    })
+
+                    $("input[type='checkbox']").each(function () {
+                        let id = $(this).val()
+                        if (booksId.includes(id)) {
+                            $(this).prop('checked', true)
+                        } else {
+                            $(this).prop('checked', false)
+                        }
+                    })
+                },
+                error: function (xhr) {
+                    alert('Get user fail!');
+                    console.log(xhr.responseText);
+                }
+            })
+
+            update_form.validate({
+                submitHandler: function (form) {
+                    let selectedBooks = []
+
+                    $("input[type=checkbox]:checked").each(function () {
+                        selectedBooks.push($(this).val())
+                    })
+
+                    let data = {
+                        first_name: $("input[name='first_name']").val(),
+                        last_name: $("input[name='last_name']").val(),
+                        books: selectedBooks,
+                    }
+
+                    console.log(data)
+
+                    $.ajax({
+                        url: url_detail,
+                        method: $(form).attr('data-method'),
+                        data: JSON.stringify(data),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Update success!');
+                            window.location.replace(url_redirect)
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+        })
+
+        function getPkFromUrl() {
+            let current_url = window.location.href
+            let url_split = current_url.split('/')
+            return url_split.at(url_split.length - 1)
+        }
+    </script>
+{% endblock %}
