@@ -33,6 +33,7 @@ urlpatterns = [
     path('book/', include('book.urls')),
     path('author/', include('author.urls')),
     path('', include('authentication.urls')),
+    path('store/', include('store.urls')),
 ]
 
 if settings.DEBUG:

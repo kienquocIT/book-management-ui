@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <h3 class="fw-bold">Move books</h3>
+    <table id="move-table" class="table table-striped">
+        {% csrf_token %}
+        <thead>
+        <tr>
+            <th>#</th>
+            <th>From</th>
+            <th>Book</th>
+            <th>To</th>
+            <th>Copies</th>
+            <th>Action</th>
+        </tr>
+        </thead>
+    </table>
+    <button id="addRow" class="btn btn-success btn-sm">Create record to move</button>
+    <button id="getInfo" class="btn btn-secondary btn-sm">Get record</button>
+    <button id="move" class="btn btn-warning btn-sm">Move book</button>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        $(document).ready(function () {
+            let get_stores_url = "{% url 'store:storeListApiView'  %}"
+            let get_store_url = "{% url 'store:storeDetailApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}"
+            let move_book_api_url = "{% url 'store:storeMoveBookApiView' %}"
+            let index_move_table = 1
+            let payloadMove = {
+                from_store_id: "",
+                to_store_id: "",
+                book_id: "",
+                copies: 0,
+            }
+
+            let move_table = new DataTable('#move-table', {
+                paging: false,
+                searching: false,
+                ordering: false,
+                info: false,
+            });
+
+            function addNewRow() {
+                move_table.row.add([
+                    index_move_table,
+                    `<select class="form-select select-from-store" name="from_store_${index_move_table}" required></select>`,
+                    `<select class="form-select select-book" name="book_${index_move_table}" required></select>`,
+                    `<select class="form-select select-to-store" name="to_store_${index_move_table}" required></select>`,
+                    `<input type="number" min="1" class="form-control" name="copies_${index_move_table}" placeholder="Enter copies..." required>`,
+                    `<button type="button" class="btn btn-danger btn-sm delete-row-btn">Delete</button>`
+                ]).draw(false);
+
+                const $newRow = $('#move-table tbody tr').last();
+                const $fromSelect = $newRow.find('.select-from-store');
+                const $bookSelect = $newRow.find('.select-book');
+                const $toSelect = $newRow.find('.select-to-store');
+
+                $fromSelect.select2({
+                    placeholder: 'Select store',
+                    width: '100%',
+                    ajax: {
+                        url: get_stores_url,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term || '',
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data, params) {
+                            params.page = params.page || 1;
+                            return {
+                                results: $.map(data, function (store) {
+                                    return {
+                                        id: store.id,
+                                        text: store.name
+                                    };
+                                }),
+                                pagination: {
+                                    more: !!data.next
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                });
+
+                $toSelect.select2({
+                    placeholder: 'Select to store',
+                    width: '100%',
+                    ajax: {
+                        url: get_stores_url,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term || '',
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data, params) {
+                            params.page = params.page || 1;
+                            return {
+                                results: $.map(data, function (store) {
+                                    return {
+                                        id: store.id,
+                                        text: store.name
+                                    };
+                                }),
+                                pagination: {
+                                    more: !!data.next
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                })
+
+                $fromSelect.on('change', function () {
+                    let storeId = $(this).val()
+                    if (!storeId) return;
+
+                    let detail_store_url = get_store_url.replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', storeId)
+
+                    $.ajax({
+                        url: detail_store_url,
+                        method: 'GET',
+                        dataType: 'json',
+                        success: function (data) {
+                            $bookSelect.prop('disabled', false).empty();
+                            $bookSelect.append('<option value="">Select book...</option>');
+
+                            if (data.books && data.books.length > 0) {
+                                $.each(data.books, function (i, book) {
+                                    $bookSelect.append(
+                                        $('<option>', {value: book.id, text: book.title || book.name})
+                                    );
+                                });
+                            } else {
+                                $bookSelect.append('<option value="">No books available</option>');
+                            }
+                        },
+                        error: function (xhr) {
+                            console.error("Error fetching books:", xhr);
+                            $bookSelect.prop('disabled', true).html('<option>Error loading books</option>');
+                        }
+                    });
+                })
+
+                index_move_table++;
+            }
+
+            $("#addRow").on('click', function () {
+                addNewRow()
+            })
+
+            $("#getInfo").on('click', function () {
+                getInfo()
+            })
+
+            function getInfo() {
+                $("#move-table tbody tr").each(function () {
+                    payloadMove.from_store_id = $(this).find("select[name^='from_store_']").val();
+                    payloadMove.book_id = $(this).find("select[name^='book_']").val();
+                    payloadMove.to_store_id = $(this).find("select[name^='to_store_']").val();
+                    payloadMove.copies = parseInt($(this).find("input[name^='copies_']").val());
+                });
+            }
+
+            $("#move").on('click', function () {
+                getInfo()
+                console.log(payloadMove)
+                $.ajax({
+                    url: move_book_api_url,
+                    method: 'POST',
+                    data: JSON.stringify(payloadMove),
+                    contentType: "application/json",
+                    processData: false,
+                    headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                    success: function (response) {
+                        alert('Move success!');
+                        window.location.reload()
+                    },
+                    error: function (error) {
+                        console.log(error);
+                    }
+                })
+            })
+        })
+    </script>
+{% endblock %}
+
+

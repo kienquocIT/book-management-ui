@@ -54,14 +54,25 @@
         </div>
 
         {# Form menu create #}
-        <div class="fw-bold mb-1">Menu</div>
-        <div class="mb-1 w-100" id="menu_list">
+        <div class="fw-bold">Menu</div>
+        <div class="mb-5">
+            <table id="menu-table" class="display">
+                <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Pages</th>
+                    <th>Action</th>
+                </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <div>
+                <button type="button" class="btn btn-success" id="addRow">Add new menu</button>
+                <button type="button" class="btn btn-secondary" id="getRows">Get created menu</button>
+            </div>
         </div>
-        <button type="button" class="btn btn-warning mb-3" data-bs-toggle="modal" data-bs-target="#menu-create-modal">
-            Create menu
-        </button>
 
-        <div class="position-absolute end-0">
+        <div class="float-end mb-5">
             <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
             <button type="submit" class="btn btn-primary">Update</button>
             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#delete-modal">Delete
@@ -88,32 +99,6 @@
         </div>
     </div>
 
-    {# Modal menu create #}
-    <div class="modal fade" id="menu-create-modal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="exampleModalLabel"> Create a new menu for book</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="form-floating mb-3">
-                        <input type="text" class="form-control" id="menu_title_input" placeholder="Menu title..."
-                               name="created_menu_title">
-                        <label for="menu_title_input">Menu Title</label>
-                    </div>
-                    <div class="form-floating mb-3">
-                        <input type="number" class="form-control" id="pages_input" name="created_menu_pages">
-                        <label for="pages_input">Pages</label>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                    <button type="button" id="btn-create-menu" class="btn btn-primary">Create</button>
-                </div>
-            </div>
-        </div>
-    </div>
 {% endblock %}
 
 {% block js_block %}
@@ -129,6 +114,7 @@
             let url_upload = $("#upload-form").attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', pk)
 
             let created_menus = []
+            let temp_menus = []
 
             $.ajax({
                 url: url_detail,
@@ -143,7 +129,7 @@
                     let authors = response?.['authors']
                     let authorsId = []
 
-                    let temp_menus = response?.['menus'] || []
+                    temp_menus = response?.['menus'] || []
                     loadMenuList(temp_menus)
 
                     authors.forEach(function (author, index) {
@@ -182,6 +168,8 @@
                     $("input[type=checkbox]:checked").each(function () {
                         selectedAuthors.push($(this).val())
                     })
+
+                    getMenus()
 
                     let data = {
                         title: $("#titleInput").val(),
@@ -266,38 +254,88 @@
                 return url_split.at(url_split.length - 1)
             }
 
+            let table;
+
             function loadMenuList(temp_menus) {
-                let container = $("#menu_list");
-                created_menus = []
-                container.empty();
-
-                if (temp_menus.length === 0) {
-                    container.text("No menu for book")
+                let counter = 1
+                if ($.fn.DataTable.isDataTable('#menu-table')) {
+                    table.clear().rows.add(temp_menus).draw();
                 } else {
-                    temp_menus.forEach(function (item, index) {
-                        let html = `
-                            <div class="d-flex gap-1 mb-1">
-                                <div class="form-floating flex-grow-1">
-                                    <input type="text" class="form-control" id="menu_title_input" placeholder="Title" value="${item?.['title']}">
-                                    <label for="menu_title_input">Menu Title</label>
-                                </div>
-                                <div class="form-floating">
-                                    <input type="number" class="form-control" id="pages_input" name="pages" value="${item?.['pages']}">
-                                    <label for="pages_input">Pages</label>
-                                </div>
-                            </div>
-                        `
-                        container.append(html)
+                    table = new DataTable('#menu-table', {
+                        paging: false,
+                        searching: false,
+                        ordering: false,
+                        info: false,
+                        data: temp_menus,
+                        columns: [
+                            {data: 'title'},
+                            {data: 'pages'},
+                            {
+                                data: null,
+                                defaultContent: '<button class="btn btn-danger btn-sm delete-row-btn">Delete</button>',
+                                orderable: false
+                            }
+                        ]
+                    });
 
-                        let created_menu = {
-                            title: item?.['title'],
-                            pages: item?.['pages']
-                        }
-                        created_menus.push(created_menu)
+                    $('#menu-table tbody').on('click', '.delete-row-btn', function () {
+                        const row = table.row($(this).closest('tr'));
+                        row.remove().draw();
+                        syncMenus()
+                    });
+
+                    $('#addRow').on('click', addNewRow);
+
+                    function addNewRow() {
+                        table.row
+                            .add({
+                                title: `<input type="text" class="form-control" name="menu_title_${counter}" placeholder="Enter title...">`,
+                                pages: `<input type="number" class="form-control" name="menu_pages_${counter}" placeholder="Enter pages...">`,
+                            })
+                            .draw(false);
+
+                        counter++
+                    }
+
+                    $('#getRows').on('click', function () {
+
+                        getMenus()
                     })
                 }
-
             }
+
+            function getMenus() {
+                created_menus = []
+                $("#menu-table tbody tr").each(function () {
+                let titleInput = $(this).find("input[name^='menu_title_']").val() || $(this).find("td:eq(0)").text()
+                let pagesInput = $(this).find("input[name^='menu_pages_']").val() || $(this).find("td:eq(1)").text()
+
+                    if (titleInput && pagesInput) {
+                        created_menus.push({
+                            title: titleInput,
+                            pages: parseInt(pagesInput)
+                        });
+                    }
+                });
+
+                console.log(created_menus)
+            }
+
+            function syncMenus() {
+                temp_menus = []
+                $("#menu-table tbody tr").each(function () {
+                    let titleVal = $(this).find("input[name^='menu_title_']").val() || $(this).find("td:eq(0)").text()
+                    let pagesVal = $(this).find("input[name^='menu_pages_']").val() || $(this).find("td:eq(1)").text()
+
+                    if (titleVal && pagesVal) {
+                        temp_menus.push({
+                            title: titleVal,
+                            pages: parseInt(pagesVal)
+                        })
+                    }
+                })
+            }
+
         })
     </script>
 {% endblock %}

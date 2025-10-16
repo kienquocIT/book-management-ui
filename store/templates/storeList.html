@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block header_block %}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/5.3.3/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.3.4/css/dataTables.bootstrap5.css"/>
+{% endblock %}
+
+{% block content %}
+    <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1>STORE LIST</h1>
+        <div>
+            <button id="btn-create" class="btn btn-dark rounded btn-sm">Create new</button>
+            <button id="btn-move" class="btn btn-warning btn-sm" type="button">Move Books</button>
+        </div>
+    </div>
+    <table id="stores-table" class="table table-striped"
+           data-url="{% url 'store:storeDetailView' '0aab5494-7fb3-4e68-81ab-f52ed706335e' %}">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Location</th>
+        </tr>
+        </thead>
+    </table>
+    <script id="url-tag"></script>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        $(document).ready(function () {
+            let get_store_api_url = "{% url 'store:storeListApiView' %}"
+            let create_view_url = "{% url 'store:storeCreateView' %}"
+            let move_book_view_url = "{% url 'store:storeMoveBookView' %}"
+
+            let stores_table = new DataTable('#stores-table', {
+                ajax: function (data, callback, settings) {
+                    $.get(get_store_api_url)
+                        .done(function (res) {
+                            console.log(res)
+                            callback({
+                                data: res
+                            });
+                        })
+                        .fail(function (err) {
+                            console.error(err);
+                        });
+                },
+                columns: [
+                    {
+                        data: null,
+                        render: function (data, type, row, meta) {
+                            return meta.row++;
+                        }
+                    },
+                    {
+                        data: 'name',
+                        render: function (data, type, row, meta) {
+                            let url_detail = $('#stores-table').attr('data-url').replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', row?.['id'])
+                            return `<a href="${url_detail}">${data}</a>`
+                        }
+                    },
+                    {data: 'location'},
+                ]
+            })
+
+            $("#btn-create").on('click', function () {
+                window.location.replace(create_view_url)
+            })
+
+            $("#btn-move").on('click', function () {
+                window.location.replace(move_book_view_url)
+            })
+        })
+    </script>
+{% endblock %}

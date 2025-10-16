@@ -17,9 +17,9 @@ class BookListView(View):
     def get(self, request):
         return render(request, "bookList.html")
 
-class BookListApiView(View):
+class BookListApiView(APIView):
     @mask_view(
-        auth_require=True,
+        auth_require=False,
     )
     def get(self, request):
         query_string = request.META.get('QUERY_STRING', '')
@@ -29,8 +29,9 @@ class BookListApiView(View):
 
         print(url)
 
-        res_books = AttachAuthTokenMiddleware.call_api("GET",url, request, params=request.GET)
-        return JsonResponse(res_books.json(), safe=False)
+        # res_books = AttachAuthTokenMiddleware.call_api("GET",url, request, params=request.GET)
+        res_books = requests.get(url=f'{settings.API_URL}v1/books', params=request.GET)
+        return JsonResponse(res_books.json(), safe=False, status=res_books.status_code)
 
 class BookCreateView(View):
     def get(self, request):

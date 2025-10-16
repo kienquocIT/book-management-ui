@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-100 position-relative" id="create-form" data-method="POST"
+            {#      data-url="{% url 'store:StoreCreateApiView' %}"#}
+          data-url-redirect="{% url 'store:storeListView' %}">
+        {% csrf_token %}
+        <h1 class="mb-4">Create Store</h1>
+
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="name_input" name="name" required>
+            <label for="name_input">Name</label>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="location_input" name="location" required>
+            <label for="location_input">Location</label>
+        </div>
+
+        <h4>Books in Store</h4>
+        <table id="stores-table" class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Book</th>
+                <th>Copies</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+        </table>
+        <div>
+            <button id="addRow" type="button" class="btn btn-success">Add book in store</button>
+            <button id="getInfoStore" type="button" class="btn btn-secondary">Get info store</button>
+        </div>
+
+        <div class="float-end my-5">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        $(document).ready(function () {
+            const get_book_api_url = "{% url 'book:BookListApiView' %}";
+            const create_store_api_url = "{% url 'store:storeCreateApiView' %}"
+            const back_list_url = "{% url 'store:storeListView' %}"
+            let index_stores_table = 1;
+            let newStore = {
+                name: "",
+                location: "",
+                book_in_store: []
+            }
+
+            let stores_table = new DataTable('#stores-table', {
+                paging: false,
+                searching: false,
+                ordering: false,
+                info: false,
+            });
+
+            function addNewRow() {
+                stores_table.row.add([
+                    index_stores_table,
+                    `<select class="form-select select-book" name="book_${index_stores_table}" required></select>`,
+                    `<input type="number" min="1" class="form-control" name="copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                    `<button type="button" class="btn btn-danger btn-sm delete-row-btn">Delete</button>`
+                ]).draw(false);
+
+                const $newSelect = $('#stores-table .select-book').last();
+
+                $newSelect.select2({
+                    placeholder: 'Select a book',
+                    width: '100%',
+                    ajax: {
+                        url: get_book_api_url,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term || '',
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data, params) {
+                            params.page = params.page || 1;
+                            return {
+                                results: $.map(data.results, function (book) {
+                                    return {
+                                        id: book.id,
+                                        text: book.title
+                                    };
+                                }),
+                                pagination: {
+                                    more: !!data.next
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                });
+
+                index_stores_table++;
+            }
+
+            $('#addRow').on('click', function () {
+                addNewRow();
+            });
+
+            $('#stores-table').on('click', '.delete-row-btn', function () {
+                stores_table.row($(this).parents('tr')).remove().draw();
+            });
+
+            $('#back-list-btn').on('click', function () {
+                window.location.href = $('#create-form').data('url-redirect');
+            });
+
+            function getInfoStore() {
+                let name = $('input[name="name"]').val()
+                let location = $('input[name="location"]').val()
+
+                newStore.name = name
+                newStore.location = location
+                newStore.book_in_store = []
+
+                $("#stores-table tbody tr").each(function () {
+                    let bookSelect = $(this).find("select[name^='book_']").val();
+                    let copiesInput = $(this).find("input[name^='copies_']").val();
+                    if (bookSelect && copiesInput) {
+                        newStore.book_in_store.push({
+                            book: bookSelect,
+                            copies: parseInt(copiesInput)
+                        });
+                    }
+                });
+
+                console.log(newStore)
+            }
+
+            $('#getInfoStore').on('click', function () {
+                getInfoStore()
+            })
+
+            $('#create-form').validate({
+                submitHandler: function () {
+                    getInfoStore()
+
+                    $.ajax({
+                        url: create_store_api_url,
+                        method: 'POST',
+                        data: JSON.stringify(newStore),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Create success!');
+                            window.location.replace(back_list_url)
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+        });
+    </script>
+{% endblock %}
+
+

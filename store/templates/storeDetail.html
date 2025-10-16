@@ -1,0 +1,327 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+{% block content %}
+    <form class="w-100 position-relative" id="update-form" data-method="POST"
+            {#      data-url="{% url 'store:StoreCreateApiView' %}"#}
+          data-url-redirect="{% url 'store:storeListView' %}">
+        {% csrf_token %}
+        <h1 class="mb-4">Store Detail</h1>
+
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="name_input" name="name" required>
+            <label for="name_input">Name</label>
+        </div>
+
+        <div class="form-floating mb-3">
+            <input type="text" class="form-control" id="location_input" name="location" required>
+            <label for="location_input">Location</label>
+        </div>
+
+        <h4 class="mt-5">Books in Store</h4>
+
+        <h6 class="text-decoration-underline mt-3">Import books</h6>
+        <table id="stores-table" class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Book</th>
+                <th>Copies</th>
+                <th>Remaining</th>
+                <th>Sold</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+        </table>
+        <div>
+            <button id="addRow" type="button" class="btn btn-success">Add book in store</button>
+            <button id="getInfoStore" type="button" class="btn btn-secondary">Get info store</button>
+        </div>
+
+        <h6 class="text-decoration-underline mt-5">Export books</h6>
+        <table id="export-table" class="table table-striped">
+            <thead>
+            <tr>
+                <th>#</th>
+                <th>Book</th>
+                <th>Remaining</th>
+                <th>Sale</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+        </table>
+        <div>
+            <button id="addExportRow" type="button" class="btn btn-success">Add book in store</button>
+            <button id="getInfoExport" type="button" class="btn btn-secondary">Get info store</button>
+            <button id="exportBtn" type="button" class="btn btn-warning">Export books</button>
+        </div>
+
+        <div class="float-end my-5">
+            <button type="button" class="btn btn-secondary" id="back-list-btn">Back to list</button>
+            <button type="submit" class="btn btn-primary">Update</button>
+            <button type="button" class="btn btn-danger" id="delete-btn">Delete</button>
+        </div>
+    </form>
+{% endblock %}
+
+{% block js_block %}
+    <script>
+        $(document).ready(function () {
+            const detail_store_url = "{% url 'store:storeDetailApiView' '0aab5494-7fb3-4e68-81ab-f52ed706335e'%}".replace('0aab5494-7fb3-4e68-81ab-f52ed706335e', getPkFromUrl())
+            const get_book_api_url = "{% url 'book:BookListApiView' %}"
+            const back_list_url = "{% url 'store:storeListView' %}"
+            const sale_api_url = "{% url 'store:saleBookApiView' %}"
+            let index_stores_table = 1;
+            let index_export_table = 1;
+            let newStore = {
+                name: "",
+                location: "",
+                book_in_store: []
+            }
+            let exportPayload = []
+
+            $.ajax({
+                url: detail_store_url,
+                method: 'GET',
+                success: function (response) {
+                    console.log(response)
+                    $('input[name="name"]').val(response.name)
+                    $('input[name="location"]').val(response.location)
+
+                    response.books.forEach((book, index) => {
+                        addNewRow(book, true, stores_table, "#stores-table")
+                    })
+
+                },
+                error: function (xhr) {
+                    console.log(xhr.responseText);
+                }
+            })
+
+            let stores_table = new DataTable('#stores-table', {
+                paging: false,
+                searching: false,
+                ordering: false,
+                info: false,
+            });
+
+            let export_table = new DataTable('#export-table', {
+                paging: false,
+                searching: false,
+                ordering: false,
+                info: false,
+            });
+
+            function addNewRow(book, isImport, table, tableId) {
+                if (isImport) {
+                    if (book) {
+                        table.row.add([
+                            index_stores_table,
+                            `<select class="form-select select-book" name="book_${index_stores_table}" required></select>`,
+                            `<input value="${book.copies}" type="number" min="1" class="form-control" name="copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<input value="${book.remaining_copies}" type="number" min="1" class="form-control" disabled name="remaining_copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<input value="${book.sold_copies}" type="number" min="1" class="form-control" disabled name="sold_copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<button type="button" class="btn btn-danger btn-sm delete-row-btn">Delete</button>`
+                        ]).draw(false);
+                    } else {
+                        table.row.add([
+                            index_stores_table,
+                            `<select class="form-select select-book" name="book_${index_stores_table}" required></select>`,
+                            `<input type="number" min="1" class="form-control" name="copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<input value="0" type="number" min="1" class="form-control" disabled name="remaining_copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<input value="0" type="number" min="1" class="form-control" disabled name="sold_copies_${index_stores_table}" placeholder="Enter copies..." required>`,
+                            `<button type="button" class="btn btn-danger btn-sm delete-row-btn">Delete</button>`
+                        ]).draw(false);
+                    }
+                } else {
+                    export_table.row.add([
+                        index_export_table,
+                        `<select class="form-select select-book" name="export_book_${index_export_table}" required></select>`,
+                        `<input value="0" type="number" min="1" class="form-control" name="export_remaining_${index_export_table}" disabled placeholder="Enter copies..." required>`,
+                        `<input value="0" type="number" min="1" class="form-control" name="export_sale_${index_export_table}" placeholder="Enter copies..." required>`,
+                        `<button type="button" class="btn btn-danger btn-sm delete-row-btn">Delete</button>`
+                    ]).draw(false);
+                }
+
+                const $newSelect = $(`${tableId} .select-book`).last();
+
+                $newSelect.select2({
+                    placeholder: 'Select a book',
+                    width: '100%',
+                    ajax: {
+                        url: isImport ? get_book_api_url : detail_store_url,
+                        dataType: 'json',
+                        delay: 250,
+                        data: function (params) {
+                            return {
+                                search: params.term || '',
+                                page: params.page || 1
+                            };
+                        },
+                        processResults: function (data, params) {
+                            params.page = params.page || 1;
+                            return {
+                                results: $.map(isImport ? data.results : data.books, function (book) {
+                                    return {
+                                        id: book.id,
+                                        text: book.title,
+                                        remaining_copies: book.remaining_copies
+                                    };
+                                }),
+                                pagination: {
+                                    more: !!data.next
+                                }
+                            };
+                        },
+                        cache: true
+                    },
+                    minimumInputLength: 0
+                });
+
+                if (book) {
+                    const option = new Option(book.title, book.id, true, true);
+                    $newSelect.append(option).trigger('change');
+                }
+
+                if (!isImport) {
+                    $newSelect.on('select2:select', function (e) {
+                        console.log(e.params.data)
+                        const selectedBook = e.params.data;
+                        const $row = $(this).closest('tr');
+                        $row.find('input[name^="export_remaining_"]').val(selectedBook.remaining_copies);
+                    });
+                }
+
+                isImport ? index_stores_table++ : index_export_table++;
+            }
+
+            $('#addRow').on('click', function () {
+                addNewRow(null, true, stores_table, "#stores-table");
+            });
+
+            $('#addExportRow').on('click', function () {
+                addNewRow(null, false, export_table, "#export-table");
+            });
+
+            $('#stores-table').on('click', '.delete-row-btn', function () {
+                stores_table.row($(this).parents('tr')).remove().draw();
+            });
+
+            $('#back-list-btn').on('click', function () {
+                window.location.href = $('#create-form').data('url-redirect');
+            });
+
+            function getInfoStore(isImport) {
+                if (isImport) {
+                    let name = $('input[name="name"]').val()
+                    let location = $('input[name="location"]').val()
+
+                    newStore.name = name
+                    newStore.location = location
+                    newStore.book_in_store = []
+
+                    $("#stores-table tbody tr").each(function () {
+                        let bookSelect = $(this).find("select[name^='book_']").val();
+                        let copiesInput = $(this).find("input[name^='copies_']").val();
+                        if (bookSelect && copiesInput) {
+                            newStore.book_in_store.push({
+                                book: bookSelect,
+                                copies: parseInt(copiesInput)
+                            });
+                        }
+                    });
+
+                    console.log(newStore)
+                } else {
+                    exportPayload = []
+                    $("#export-table tbody tr").each(function () {
+                        let bookSelect = $(this).find("select[name^='export_book_']").val();
+                        let saleInput = $(this).find("input[name^='export_sale_']").val();
+                        if (bookSelect && saleInput) {
+                            exportPayload.push({
+                                store_id: getPkFromUrl(),
+                                book_id: bookSelect,
+                                sold_copies: parseInt(saleInput)
+                            })
+                        }
+                    });
+                    console.log(exportPayload)
+                }
+            }
+
+            $('#getInfoStore').on('click', function () {
+                getInfoStore(true)
+            })
+
+            $('#getInfoExport').on('click', function () {
+                getInfoStore(false)
+            })
+
+            $('#update-form').validate({
+                submitHandler: function () {
+                    getInfoStore(true)
+
+                    $.ajax({
+                        url: detail_store_url,
+                        method: 'PUT',
+                        data: JSON.stringify(newStore),
+                        contentType: "application/json",
+                        processData: false,
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Update success!');
+                            window.location.replace(back_list_url)
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+                }
+            })
+
+            $('#exportBtn').on('click', function() {
+                getInfoStore(false)
+
+                $.ajax({
+                        url: sale_api_url,
+                        method: 'POST',
+                        processData: false,
+                        data: JSON.stringify(exportPayload),
+                        contentType: "application/json",
+                        headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                        success: function (response) {
+                            alert('Sale success!');
+                            window.location.reload()
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    })
+            })
+
+            $("#delete-btn").on('click', function () {
+                $.ajax({
+                    url: detail_store_url,
+                    method: 'DELETE',
+                    processData: false,
+                    headers: {"X-CSRFToken": $('input[name="csrfmiddlewaretoken"]').val()},
+                    success: function (response) {
+                        alert('Delete success!');
+                        window.location.replace(back_list_url)
+                    },
+                    error: function (error) {
+                        console.log(error);
+                    }
+                })
+            })
+
+            function getPkFromUrl() {
+                let current_url = window.location.href
+                let url_split = current_url.split('/')
+                return url_split.at(url_split.length - 1)
+            }
+        });
+    </script>
+{% endblock %}
+
+
